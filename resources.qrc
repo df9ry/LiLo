@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>res/LiLo.ico</file>
+        <file>res/LiLo-256.png</file>
+        <file>res/world.png</file>
+    </qresource>
+</RCC>

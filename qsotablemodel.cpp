@@ -2,6 +2,7 @@
 
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QSqlResult>
 
 #include <cassert>
 
@@ -56,62 +57,72 @@ bool QsoTableModel::start()
     }
     const QStringList tables = database.tables();
     if (!tables.contains("stat")) {
-        qDebug() << "Creating stat table";
-        database.exec(
-                    "CREATE TABLE stat ("
-                        "id INTEGER PRIMARY KEY,"
-                        "next_id INTEGER NOT NULL"
-                    ");");
-        QSqlError err = database.lastError();
-        if (err.type() != QSqlError::NoError) {
-            setLastError(err);
-            return false;
+        {
+            qDebug() << "Creating stat table";
+            QSqlQuery query("CREATE TABLE stat ("
+                "id INTEGER PRIMARY KEY,"
+                "next_id INTEGER NOT NULL"
+                ");",
+                database
+            );
+            if (query.exec())
+            {
+                setLastError(query.lastError());
+                next_id = -1;
+                return false;
+            }
         }
-        database.exec("INSERT INTO stat (id, next_id) VALUES(0, 0);");
-        err = database.lastError();
-        if (err.type() != QSqlError::NoError) {
-            setLastError(err);
-            return false;
+        {
+            qDebug() << "Filling in stat table";
+            QSqlQuery query("INSERT INTO stat (id, next_id) VALUES(0, 0);",
+                            database);
+            if (query.exec())
+            {
+                setLastError(query.lastError());
+                next_id = -1;
+                return false;
+            }
         }
         next_id = 0;
     } else {
-        QSqlQuery result = database.exec("SELECT next_id FROM stat;");
-        if (!result.isActive()) {
-            QSqlError err = database.lastError();
-            qDebug() << database.lastError();
-            setLastError(QSqlError(tr("Unable to query next_id"),
-                                   database.databaseName(),
-                                   QSqlError::ErrorType::TransactionError,
-                                   ""));
+        QSqlQuery query("SELECT next_id FROM stat;", database);
+        if (!query.exec()) {
+            setLastError(query.lastError());
             next_id = -1;
             return false;
         }
-        result.first();
-        next_id = result.value(0).toInt();
+        if (!query.first()) {
+            setLastError(query.lastError());
+            next_id = -1;
+            return false;
+        }
+        next_id = query.value(0).toInt();
     }
 
     if (!tables.contains("qsos")) {
         qDebug() << "Creating qsos table";
-        database.exec(
-                    "CREATE TABLE qsos ("
-                        "id INTEGER PRIMARY KEY,"
-                        "station TEXT NOT NULL,"
-                        "timestamp BIGINT UNSIGNED,"
-                        "qrg INTEGER,"
-                        "his TEXT,"
-                        "mine TEXT,"
-                        "mode TEXT,"
-                        "locator TEXT,"
-                        "name TEXT,"
-                        "qth TEXT,"
-                        "remarks TEXT"
-                    ");");
-        QSqlError err = database.lastError();
-        if (err.type() != QSqlError::NoError) {
-            setLastError(err);
+        QSqlQuery query(
+            "CREATE TABLE qsos ("
+            "id INTEGER PRIMARY KEY,"
+            "station TEXT NOT NULL,"
+            "timestamp BIGINT UNSIGNED,"
+            "qrg INTEGER,"
+            "his TEXT,"
+            "mine TEXT,"
+            "mode TEXT,"
+            "locator TEXT,"
+            "name TEXT,"
+            "qth TEXT,"
+            "remarks TEXT"
+            ");",
+            database
+        );
+        if (query.exec())
+        {
+            setLastError(query.lastError());
+            next_id = -1;
             return false;
         }
-
     }
 
     setQuery(selectQuery, database);
